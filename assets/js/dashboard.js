@@ -1,5 +1,4 @@
 import { supabase } from "./supabase.js";
-import { iniciarLayout } from "./utils/layout.js";
 
 // =======================================
 // ELEMENTOS DEL DOM
@@ -13,6 +12,14 @@ const inspeccionesTotal = document.getElementById("inspeccionesTotal");
 
 const ordenesTotal = document.getElementById("ordenesTotal");
 
+const equiposVencidos = document.getElementById("equiposVencidos");
+
+const equiposProximos = document.getElementById("equiposProximos");
+
+const equiposOperativos = document.getElementById("equiposOperativos");
+
+const tablaUltimasOrdenes = document.getElementById("tablaUltimasOrdenes");
+
 const logout = document.getElementById("logout");
 
 // =======================================
@@ -21,7 +28,15 @@ const logout = document.getElementById("logout");
 
 async function verificarSesion() {
 
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+
+        console.error(error);
+
+        return;
+
+    }
 
     if (!data.session) {
 
@@ -59,7 +74,7 @@ async function contarClientes() {
 
     }
 
-    clientesTotal.textContent = count;
+    clientesTotal.textContent = count ?? 0;
 
 }
 
@@ -89,7 +104,7 @@ async function contarEquipos() {
 
     }
 
-    equiposTotal.textContent = count;
+    equiposTotal.textContent = count ?? 0;
 
 }
 
@@ -119,12 +134,12 @@ async function contarInspecciones() {
 
     }
 
-    inspeccionesTotal.textContent = count;
+    inspeccionesTotal.textContent = count ?? 0;
 
 }
 
 // =======================================
-// CONTAR ORDENES
+// CONTAR ÓRDENES
 // =======================================
 
 async function contarOrdenes() {
@@ -149,7 +164,7 @@ async function contarOrdenes() {
 
     }
 
-    ordenesTotal.textContent = count;
+    ordenesTotal.textContent = count ?? 0;
 
 }
 
@@ -157,53 +172,35 @@ async function contarOrdenes() {
 // CERRAR SESIÓN
 // =======================================
 
-logout.addEventListener("click", async () => {
+if (logout) {
 
-    const respuesta = await Swal.fire({
+    logout.addEventListener("click", async () => {
 
-        title: "Cerrar sesión",
+        const respuesta = await Swal.fire({
 
-        text: "¿Desea salir del sistema?",
+            title: "Cerrar sesión",
 
-        icon: "question",
+            text: "¿Desea salir del sistema?",
 
-        showCancelButton: true,
+            icon: "question",
 
-        confirmButtonText: "Sí",
+            showCancelButton: true,
 
-        cancelButtonText: "Cancelar"
+            confirmButtonText: "Sí",
+
+            cancelButtonText: "Cancelar"
+
+        });
+
+        if (!respuesta.isConfirmed) return;
+
+        await supabase.auth.signOut();
+
+        window.location.href = "login.html";
 
     });
 
-    if (!respuesta.isConfirmed) return;
-
-    await supabase.auth.signOut();
-
-    window.location.href = "login.html";
-
-});
-
-// =======================================
-// INICIALIZAR
-// =======================================
-
-(async () => {
-
-    await verificarSesion();
-
-    await Promise.all([
-
-        contarClientes(),
-
-        contarEquipos(),
-
-        contarInspecciones(),
-
-        contarOrdenes()
-
-    ]);
-
-})();
+}
 // =======================================
 // VARIABLES GRÁFICOS
 // =======================================
@@ -212,12 +209,11 @@ let graficoEquipos = null;
 
 let graficoOrdenes = null;
 
-
 // =======================================
 // GRÁFICO EQUIPOS POR TIPO
 // =======================================
 
-async function cargarGraficoEquipos(){
+async function cargarGraficoEquipos() {
 
     const { data, error } = await supabase
 
@@ -225,7 +221,7 @@ async function cargarGraficoEquipos(){
 
         .select("tipo");
 
-    if(error){
+    if (error) {
 
         console.error(error);
 
@@ -233,67 +229,83 @@ async function cargarGraficoEquipos(){
 
     }
 
-    const contador={};
+    const contador = {};
 
-    data.forEach(item=>{
+    data.forEach((equipo) => {
 
-        contador[item.tipo]=(contador[item.tipo] || 0)+1;
+        const tipo = equipo.tipo || "Sin tipo";
+
+        contador[tipo] = (contador[tipo] || 0) + 1;
 
     });
 
-    const etiquetas=Object.keys(contador);
+    const etiquetas = Object.keys(contador);
 
-    const valores=Object.values(contador);
+    const valores = Object.values(contador);
 
-    const ctx=document
+    const canvas = document.getElementById("graficoEquipos");
 
-        .getElementById("graficoEquipos")
+    if (!canvas) return;
 
-        .getContext("2d");
+    const ctx = canvas.getContext("2d");
 
-    if(graficoEquipos){
+    if (graficoEquipos) {
 
         graficoEquipos.destroy();
 
     }
 
-    graficoEquipos=new Chart(ctx,{
+    graficoEquipos = new Chart(ctx, {
 
-        type:"doughnut",
+        type: "doughnut",
 
-        data:{
+        data: {
 
-            labels:etiquetas,
+            labels: etiquetas,
 
-            datasets:[{
+            datasets: [
 
-                data:valores,
+                {
 
-                backgroundColor:[
+                    label: "Equipos",
 
-                    "#0d6efd",
+                    data: valores,
 
-                    "#198754",
+                    backgroundColor: [
 
-                    "#ffc107",
+                        "#0d6efd",
 
-                    "#dc3545"
+                        "#198754",
 
-                ]
+                        "#ffc107",
 
-            }]
+                        "#dc3545",
+
+                        "#6f42c1",
+
+                        "#20c997",
+
+                        "#fd7e14"
+
+                    ]
+
+                }
+
+            ]
 
         },
 
-        options:{
+        options: {
 
-            responsive:true,
+            responsive: true,
 
-            plugins:{
+            maintainAspectRatio: false,
 
-                legend:{
+            plugins: {
 
-                    position:"bottom"
+                legend: {
+
+                    position: "bottom"
 
                 }
 
@@ -305,20 +317,19 @@ async function cargarGraficoEquipos(){
 
 }
 
-
 // =======================================
-// GRÁFICO ÓRDENES
+// GRÁFICO ÓRDENES POR ESTADO
 // =======================================
 
-async function cargarGraficoOrdenes(){
+async function cargarGraficoOrdenes() {
 
-    const { data,error } = await supabase
+    const { data, error } = await supabase
 
         .from("ordenes")
 
         .select("estado");
 
-    if(error){
+    if (error) {
 
         console.error(error);
 
@@ -326,75 +337,97 @@ async function cargarGraficoOrdenes(){
 
     }
 
-    const contador={};
+    const contador = {};
 
-    data.forEach(item=>{
+    data.forEach((orden) => {
 
-        contador[item.estado]=(contador[item.estado] || 0)+1;
+        const estado = orden.estado || "Sin estado";
+
+        contador[estado] = (contador[estado] || 0) + 1;
 
     });
 
-    const etiquetas=Object.keys(contador);
+    const etiquetas = Object.keys(contador);
 
-    const valores=Object.values(contador);
+    const valores = Object.values(contador);
 
-    const ctx=document
+    const canvas = document.getElementById("graficoOrdenes");
 
-        .getElementById("graficoOrdenes")
+    if (!canvas) return;
 
-        .getContext("2d");
+    const ctx = canvas.getContext("2d");
 
-    if(graficoOrdenes){
+    if (graficoOrdenes) {
 
         graficoOrdenes.destroy();
 
     }
 
-    graficoOrdenes=new Chart(ctx,{
+    graficoOrdenes = new Chart(ctx, {
 
-        type:"bar",
+        type: "bar",
 
-        data:{
+        data: {
 
-            labels:etiquetas,
+            labels: etiquetas,
 
-            datasets:[{
+            datasets: [
 
-                label:"Órdenes",
+                {
 
-                data:valores,
+                    label: "Órdenes",
 
-                borderWidth:1,
+                    data: valores,
 
-                backgroundColor:[
+                    backgroundColor: [
 
-                    "#ffc107",
+                        "#ffc107",
 
-                    "#0d6efd",
+                        "#0d6efd",
 
-                    "#198754"
+                        "#198754",
 
-                ]
+                        "#dc3545"
 
-            }]
+                    ],
+
+                    borderWidth: 1
+
+                }
+
+            ]
 
         },
 
-        options:{
+        options: {
 
-            responsive:true,
+            responsive: true,
 
-            scales:{
+            maintainAspectRatio: false,
 
-                y:{
+            scales: {
 
-                    beginAtZero:true,
+                y: {
 
-                    ticks:{
+                    beginAtZero: true,
 
-                        precision:0
+                    ticks: {
+
+                        precision: 0,
+
+                        stepSize: 1
 
                     }
+
+                }
+
+            },
+
+            plugins: {
+
+                legend: {
+
+                    display: false
 
                 }
 
@@ -409,7 +442,7 @@ async function cargarGraficoOrdenes(){
 // ALERTAS AUTOMÁTICAS
 // =======================================
 
-async function cargarAlertas(){
+async function cargarAlertas() {
 
     const { data, error } = await supabase
 
@@ -417,7 +450,7 @@ async function cargarAlertas(){
 
         .select("fecha_proxima_recarga");
 
-    if(error){
+    if (error) {
 
         console.error(error);
 
@@ -426,40 +459,42 @@ async function cargarAlertas(){
     }
 
     let operativos = 0;
+
     let proximos = 0;
+
     let vencidos = 0;
 
     const hoy = new Date();
 
-    data.forEach(e => {
+    hoy.setHours(0, 0, 0, 0);
 
-        if(!e.fecha_proxima_recarga){
+    data.forEach((equipo) => {
 
-            return;
+        if (!equipo.fecha_proxima_recarga) return;
 
-        }
+        const fecha = new Date(equipo.fecha_proxima_recarga);
 
-        const fecha = new Date(e.fecha_proxima_recarga);
+        fecha.setHours(0, 0, 0, 0);
 
-        const diferencia = Math.ceil(
+        const diferencia = Math.floor(
 
             (fecha - hoy) / (1000 * 60 * 60 * 24)
 
         );
 
-        if(diferencia < 0){
+        if (diferencia < 0) {
 
             vencidos++;
 
         }
 
-        else if(diferencia <= 30){
+        else if (diferencia <= 30) {
 
             proximos++;
 
         }
 
-        else{
+        else {
 
             operativos++;
 
@@ -467,11 +502,11 @@ async function cargarAlertas(){
 
     });
 
-    equiposOperativos.textContent = operativos;
+    equiposVencidos.textContent = vencidos;
 
     equiposProximos.textContent = proximos;
 
-    equiposVencidos.textContent = vencidos;
+    equiposOperativos.textContent = operativos;
 
 }
 
@@ -479,33 +514,26 @@ async function cargarAlertas(){
 // ÚLTIMAS ÓRDENES
 // =======================================
 
-async function cargarUltimasOrdenes(){
+async function cargarUltimasOrdenes() {
 
-    const { data,error } = await supabase
+    const { data, error } = await supabase
 
         .from("ordenes")
 
         .select(`
-
             *,
-
-            equipos(
-
-                codigo
-
-            )
-
+            equipos(codigo)
         `)
 
-        .order("created_at",{
+        .order("created_at", {
 
-            ascending:false
+            ascending: false
 
         })
 
         .limit(5);
 
-    if(error){
+    if (error) {
 
         console.error(error);
 
@@ -513,23 +541,21 @@ async function cargarUltimasOrdenes(){
 
     }
 
-    tablaUltimasOrdenes.innerHTML="";
+    tablaUltimasOrdenes.innerHTML = "";
 
-    if(data.length===0){
+    if (!data || data.length === 0) {
 
-        tablaUltimasOrdenes.innerHTML=`
+        tablaUltimasOrdenes.innerHTML = `
 
-        <tr>
+            <tr>
 
-            <td colspan="4"
+                <td colspan="4" class="text-center">
 
-            class="text-center">
+                    No existen órdenes registradas.
 
-            No existen órdenes.
+                </td>
 
-            </td>
-
-        </tr>
+            </tr>
 
         `;
 
@@ -537,64 +563,96 @@ async function cargarUltimasOrdenes(){
 
     }
 
-    data.forEach(o=>{
+    data.forEach((orden) => {
 
-        let color="secondary";
+        let color = "secondary";
 
-        if(o.estado==="Pendiente"){
+        switch (orden.estado) {
 
-            color="warning";
+            case "Pendiente":
+
+                color = "warning";
+
+                break;
+
+            case "En proceso":
+
+                color = "primary";
+
+                break;
+
+            case "Finalizada":
+
+                color = "success";
+
+                break;
 
         }
 
-        if(o.estado==="En proceso"){
+        tablaUltimasOrdenes.innerHTML += `
 
-            color="primary";
+            <tr>
 
-        }
+                <td>${orden.equipos?.codigo ?? "-"}</td>
 
-        if(o.estado==="Finalizada"){
+                <td>${orden.tecnico ?? "-"}</td>
 
-            color="success";
+                <td>
 
-        }
+                    <span class="badge bg-${color}">
 
-        tablaUltimasOrdenes.innerHTML+=`
+                        ${orden.estado ?? "-"}
 
-        <tr>
+                    </span>
 
-            <td>
+                </td>
 
-                ${o.equipos?.codigo ?? ""}
+                <td>${orden.fecha ?? "-"}</td>
 
-            </td>
-
-            <td>
-
-                ${o.tecnico}
-
-            </td>
-
-            <td>
-
-                <span class="badge bg-${color}">
-
-                    ${o.estado}
-
-                </span>
-
-            </td>
-
-            <td>
-
-                ${o.fecha ?? ""}
-
-            </td>
-
-        </tr>
+            </tr>
 
         `;
 
     });
 
 }
+
+// =======================================
+// CARGAR DASHBOARD
+// =======================================
+
+async function cargarDashboard() {
+
+    await verificarSesion();
+
+    await Promise.all([
+
+        contarClientes(),
+
+        contarEquipos(),
+
+        contarInspecciones(),
+
+        contarOrdenes(),
+
+        cargarAlertas(),
+
+        cargarGraficoEquipos(),
+
+        cargarGraficoOrdenes(),
+
+        cargarUltimasOrdenes()
+
+    ]);
+
+}
+
+// =======================================
+// INICIAR
+// =======================================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    cargarDashboard();
+
+});
